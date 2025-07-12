@@ -4,17 +4,26 @@
  */
 package com.dht.quizapp;
 
+import com.dht.pojo.Category;
+import com.dht.pojo.Level;
 import com.dht.pojo.Question;
-import com.dht.services.QuestionServices;
+import com.dht.services.FlyweightFactory;
+import com.dht.services.questions.BaseQuestionServices;
+import com.dht.services.questions.CategoryQuestionDecorator;
+import com.dht.services.questions.LevelQuestionDecorator;
+import com.dht.services.questions.LimitQuestionDecorator;
+import com.dht.utils.Configs;
+import com.dht.utils.MyAlert;
 import java.net.URL;
 import java.sql.SQLException;
 import java.util.List;
 import java.util.ResourceBundle;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import javafx.collections.FXCollections;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
+import javafx.scene.control.Alert;
+import javafx.scene.control.ComboBox;
 import javafx.scene.control.RadioButton;
 import javafx.scene.control.TextField;
 import javafx.scene.control.ToggleGroup;
@@ -31,26 +40,50 @@ public class PracticeController implements Initializable {
     @FXML private Text txtResult;
     @FXML private  TextField txtNum;
     @FXML private VBox vboxChoices;
+    @FXML private ComboBox<Category> cbSearchCates;
+    @FXML private ComboBox<Level> cbSearchLevels;
     
     private List<Question> questions;
     private int currentQuestion = 0;
     
-    private static final QuestionServices questionServices = new QuestionServices();
 
     /**
      * Initializes the controller class.
+     * @param url
+     * @param rb
      */
     @Override
     public void initialize(URL url, ResourceBundle rb) {
-        
+         try {
+            this.cbSearchCates.setItems(FXCollections.observableList(FlyweightFactory.getData(Configs.cateServices, "categories")));
+            this.cbSearchLevels.setItems(FXCollections.observableList(FlyweightFactory.getData(Configs.levelServices, "levels")));
+        } catch (SQLException ex) {
+        }
     }   
     
     public void handleStart(ActionEvent event) {
         try {
-            this.questions = questionServices.getQuestions(Integer.parseInt(this.txtNum.getText()));
-            this.loadQuestion();
+            BaseQuestionServices s = Configs.questionServices;
+            
+            Category c = this.cbSearchCates.getSelectionModel().getSelectedItem();
+            if (c != null)
+                s = new CategoryQuestionDecorator(s, c);
+            
+            Level l = this.cbSearchLevels.getSelectionModel().getSelectedItem();
+            if (l != null)
+                s = new LevelQuestionDecorator(s, l);
+                    
+            s = new LimitQuestionDecorator(s, Integer.parseInt(this.txtNum.getText()));
+            
+            this.questions = s.list();
+            if (this.questions.isEmpty())
+                MyAlert.getInstance().showMsg("Không có câu hỏi phù hợp", Alert.AlertType.ERROR);
+            else {
+                this.currentQuestion = 0;
+                this.loadQuestion();
+            }
         } catch (SQLException ex) {
-            Logger.getLogger(PracticeController.class.getName()).log(Level.SEVERE, null, ex);
+            
         }
     }
     
@@ -76,7 +109,6 @@ public class PracticeController implements Initializable {
                     this.txtResult.setText("Tiếc thiệt! Bạn đã trả lời sai!");
                     this.txtResult.getStyleClass().add("Wrong");
                 }
-                    
                 
                 break;
             }
