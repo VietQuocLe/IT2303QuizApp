@@ -41,3 +41,7 @@ Click nbfs://nbhost/SystemFileSystem/Templates/Other/CascadeStyleSheet.css to ed
 .Wrong {
     -fx-fill: orangered;
 }
+
+RadioButton {
+    -fx-text-fill: white;
+}
